@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/Layout/MainLayout';
 import {
   Box,
+  Card,
+  CardContent,
   Typography,
   Table,
   TableBody,
@@ -23,6 +25,10 @@ import {
 } from '@mui/material';
 import {
   Search,
+  ArrowBack,
+  Person,
+  Group,
+  Percent,
   NavigateNext,
   Link as LinkIcon,
 } from '@mui/icons-material';
@@ -102,6 +108,14 @@ export default function MyfansPage() {
     page * rowsPerPage + rowsPerPage
   );
 
+  // 統計計算
+  const totalCreators = creators.length;
+  const exclusiveCount = creators.filter(c => c.registration_type === '独占').length;
+  const nonExclusiveCount = creators.filter(c => c.registration_type === '非独占').length;
+  const avgCreatorRate = creators.length > 0 
+    ? (creators.reduce((sum, c) => sum + (c.creator_rate || 0), 0) / creators.length * 100).toFixed(1)
+    : 0;
+
   return (
     <MainLayout>
       <Box sx={{ p: 3 }}>
@@ -133,7 +147,7 @@ export default function MyfansPage() {
         <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
             fullWidth
-            placeholder="クリエイター名、PF_ID、メール、マネージャーで検索..."
+            placeholder="クリエイター名、プラットフォームID、メール、マネージャーで検索..."
             value={searchTerm}
             onChange={handleSearchChange}
             InputProps={{
@@ -151,11 +165,10 @@ export default function MyfansPage() {
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell>PF_ID</TableCell>
+                <TableCell>プラットフォームID</TableCell>
                 <TableCell>クリエイター名</TableCell>
                 <TableCell>URL</TableCell>
                 <TableCell>メール</TableCell>
-                <TableCell>パスワード</TableCell>
                 <TableCell>マネージャー</TableCell>
                 <TableCell align="center">登録タイプ</TableCell>
                 <TableCell align="center">CR料率</TableCell>
@@ -166,13 +179,13 @@ export default function MyfansPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 5 }}>
                     <Typography>読み込み中...</Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedCreators.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 5 }}>
                     <Typography>データが見つかりません</Typography>
                   </TableCell>
                 </TableRow>
@@ -208,20 +221,6 @@ export default function MyfansPage() {
                       ) : '-'}
                     </TableCell>
                     <TableCell>{creator.email || '-'}</TableCell>
-                    <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          fontFamily: 'monospace',
-                          backgroundColor: 'grey.100',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        {creator.password || '-'}
-                      </Typography>
-                    </TableCell>
                     <TableCell>{creator.manager || '-'}</TableCell>
                     <TableCell align="center">
                       <Chip 

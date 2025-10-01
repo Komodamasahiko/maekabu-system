@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import MainLayout from '@/components/Layout/MainLayout';
+import DepartmentLayout from '@/components/department/DepartmentLayout';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Box,
   Card,
@@ -17,6 +18,7 @@ import {
   Paper,
   TextField,
   InputAdornment,
+  IconButton,
   Chip,
   Button,
   Dialog,
@@ -25,14 +27,13 @@ import {
   DialogActions,
   Tabs,
   Tab,
-  Breadcrumbs,
-  Link,
-  FormControlLabel,
-  Switch,
 } from '@mui/material';
 import {
   Search,
-  NavigateNext,
+  Person,
+  AccountBalance,
+  Email,
+  ArrowForward,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 
@@ -88,7 +89,6 @@ function TabPanel(props: TabPanelProps) {
 
 export default function CreatorManagement() {
   const [creators, setCreators] = useState<FanCreator[]>([]);
-  const [allCreators, setAllCreators] = useState<FanCreator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
@@ -96,7 +96,7 @@ export default function CreatorManagement() {
   const [selectedCreator, setSelectedCreator] = useState<FanCreator | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const supabase = createClientComponentClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -106,17 +106,13 @@ export default function CreatorManagement() {
   const fetchCreators = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/creators');
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch creators');
-      }
-      
-      const data = result.data || [];
-      setAllCreators(data);
-      // 初期表示は「稼働」状態のみ
-      setCreators(data.filter((c: FanCreator) => c.status === '稼働'));
+      const { data, error } = await supabase
+        .from('fan_creator')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCreators(data || []);
     } catch (error) {
       console.error('Error fetching creators:', error);
     } finally {
@@ -153,16 +149,6 @@ export default function CreatorManagement() {
     setTabValue(newValue);
   };
 
-  const handleToggleActiveOnly = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setShowActiveOnly(event.target.checked);
-    if (event.target.checked) {
-      setCreators(allCreators.filter(c => c.status === '稼働'));
-    } else {
-      setCreators(allCreators);
-    }
-    setPage(0);
-  };
-
   const filteredCreators = creators.filter(creator =>
     creator.real_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     creator.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -177,50 +163,139 @@ export default function CreatorManagement() {
   );
 
   return (
-    <MainLayout>
+    <DepartmentLayout departmentName="ファン事業部" departmentCode="fan_dep">
       <Box sx={{ p: 3 }}>
-        {/* パンくずリスト */}
-        <Breadcrumbs separator={<NavigateNext fontSize="small" />} sx={{ mb: 3 }}>
-          <Link
-            component="button"
-            variant="body1"
-            onClick={() => router.push('/')}
-            underline="hover"
-            color="inherit"
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            クリエイター管理
+          </Typography>
+        </Box>
+
+        {/* プラットフォーム別ナビゲーション */}
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: 2,
+          mb: 3
+        }}>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              '&:hover': { 
+                transform: 'translateY(-4px)',
+                boxShadow: 3,
+                backgroundColor: 'primary.lighter'
+              }
+            }}
+            onClick={() => router.push('/creator/fantia')}
           >
-            ダッシュボード
-          </Link>
-          <Typography color="text.primary">クリエイター管理</Typography>
-        </Breadcrumbs>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="h6" color="primary">
+                    Fantia
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    クリエイターデータを表示
+                  </Typography>
+                </Box>
+                <ArrowForward sx={{ color: 'primary.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              '&:hover': { 
+                transform: 'translateY(-4px)',
+                boxShadow: 3,
+                backgroundColor: 'secondary.lighter'
+              }
+            }}
+            onClick={() => router.push('/creator/myfans')}
+          >
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="h6" color="secondary">
+                    Myfans
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    クリエイターデータを表示
+                  </Typography>
+                </Box>
+                <ArrowForward sx={{ color: 'secondary.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* 統計カード */}
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: 2,
+          mb: 3
+        }}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Person sx={{ color: 'primary.main', mr: 1 }} />
+                <Typography color="text.secondary" variant="body2">
+                  総クリエイター数
+                </Typography>
+              </Box>
+              <Typography variant="h4">
+                {creators.length}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <AccountBalance sx={{ color: 'success.main', mr: 1 }} />
+                <Typography color="text.secondary" variant="body2">
+                  銀行口座登録済み
+                </Typography>
+              </Box>
+              <Typography variant="h4">
+                {creators.filter(c => c.bank_name).length}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Email sx={{ color: 'info.main', mr: 1 }} />
+                <Typography color="text.secondary" variant="body2">
+                  メールアドレス登録済み
+                </Typography>
+              </Box>
+              <Typography variant="h4">
+                {creators.filter(c => c.email).length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
 
         {/* 検索バー */}
         <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <TextField
-              fullWidth
-              placeholder="本名、CR名、ログインID、メールアドレス、インボイス番号で検索..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <FormControlLabel
-              control={
-                <Switch 
-                  checked={showActiveOnly}
-                  onChange={handleToggleActiveOnly}
-                  color="primary"
-                />
-              }
-              label="稼働のみ"
-              sx={{ minWidth: 'fit-content' }}
-            />
-          </Box>
+          <TextField
+            fullWidth
+            placeholder="本名、CR名、ログインID、メールアドレス、インボイス番号で検索..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
         </Paper>
 
         {/* テーブル */}
@@ -433,6 +508,6 @@ export default function CreatorManagement() {
           </DialogActions>
         </Dialog>
       </Box>
-    </MainLayout>
+    </DepartmentLayout>
   );
 }

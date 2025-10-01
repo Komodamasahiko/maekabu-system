@@ -24,6 +24,39 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  font-size: 14px; /* 全体のフォントサイズを小さく */
+}
+
+/* Material-UIコンポーネントのフォントサイズ調整 */
+.MuiTypography-root {
+  font-size: 0.9rem !important;
+}
+
+.MuiTableCell-root {
+  font-size: 0.85rem !important;
+  padding: 8px 12px !important;
+}
+
+.MuiTableHead .MuiTableCell-root {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+}
+
+.MuiChip-root {
+  font-size: 0.75rem !important;
+  height: 24px !important;
+}
+
+.MuiButton-root {
+  font-size: 0.8rem !important;
+}
+
+.MuiTextField-root .MuiInputBase-input {
+  font-size: 0.85rem !important;
+}
+
+.MuiInputLabel-root {
+  font-size: 0.85rem !important;
 }
 
 @layer utilities {

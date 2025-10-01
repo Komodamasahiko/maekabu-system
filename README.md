@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Maekabu System
 
-## Getting Started
+ファン事業部クリエイター管理システム
 
-First, run the development server:
+## 概要
+
+TikTokエージェンシーシステムから独立した、ファン事業部専用の管理システムです。
+
+## 技術スタック
+
+- **Framework**: Next.js 14.2.5
+- **Language**: TypeScript
+- **Database**: Supabase (PostgreSQL) - 既存DBと共有
+- **UI**: Material-UI
+- **Styling**: Tailwind CSS
+
+## 機能
+
+- クリエイター基本情報管理
+- Fantia/Myfans プラットフォーム別管理
+- 銀行口座情報管理
+- インボイス管理
+
+## セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.local` ファイルに以下を設定:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開いてアクセス
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## プロジェクト構造
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```
+maekabu_sys/
+├── app/
+│   ├── page.tsx              # ホームページ（自動リダイレクト）
+│   ├── creator/
+│   │   ├── page.tsx          # クリエイター管理メイン
+│   │   ├── fantia/
+│   │   │   └── page.tsx      # Fantiaクリエイター管理
+│   │   └── myfans/
+│   │       └── page.tsx      # Myfansクリエイター管理
+│   └── layout.tsx            # ルートレイアウト
+├── components/
+│   └── department/           # 部門共通コンポーネント
+├── lib/
+│   └── supabase.ts          # Supabase設定
+└── public/
+    └── pf/                  # プラットフォームアイコン
+```
 
-## Learn More
+## デプロイ
 
-To learn more about Next.js, take a look at the following resources:
+### GitHub リポジトリの作成
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. GitHubで新規リポジトリ `maekabu-system` を作成
+2. 以下のコマンドを実行:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+git remote add origin https://github.com/YOUR_USERNAME/maekabu-system.git
+git push -u origin main
+```
 
-## Deploy on Vercel
+### Vercel へのデプロイ
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. [Vercel](https://vercel.com) にログイン
+2. 新規プロジェクトをインポート
+3. GitHubリポジトリを選択
+4. 環境変数を設定
+5. デプロイ
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## ライセンス
+
+Private

@@ -24,8 +24,8 @@ import {
 import {
   Search,
   NavigateNext,
-  Link as LinkIcon,
 } from '@mui/icons-material';
+import Image from 'next/image';
 
 interface FanPfCreator {
   id: string;
@@ -51,7 +51,7 @@ export default function MyfansPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const router = useRouter();
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function MyfansPage() {
           >
             クリエイター管理
           </Link>
-          <Typography color="text.primary">Myfans</Typography>
+          <Typography color="text.primary">マイファンズ</Typography>
         </Breadcrumbs>
 
 
@@ -152,7 +152,7 @@ export default function MyfansPage() {
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                 <TableCell>PF_ID</TableCell>
-                <TableCell>クリエイター名</TableCell>
+                <TableCell sx={{ width: '200px', maxWidth: '200px' }}>クリエイター名</TableCell>
                 <TableCell>URL</TableCell>
                 <TableCell>メール</TableCell>
                 <TableCell>パスワード</TableCell>
@@ -191,8 +191,17 @@ export default function MyfansPage() {
                         variant="outlined"
                       />
                     </TableCell>
-                    <TableCell>
-                      <Typography fontWeight="medium">
+                    <TableCell sx={{ width: '200px', maxWidth: '200px' }}>
+                      <Typography 
+                        fontWeight="medium"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          display: 'block'
+                        }}
+                        title={creator.creator_name || '-'}
+                      >
                         {creator.creator_name || '-'}
                       </Typography>
                     </TableCell>
@@ -202,8 +211,23 @@ export default function MyfansPage() {
                           size="small"
                           color="secondary"
                           onClick={() => window.open(creator.url, '_blank')}
+                          sx={{ padding: '4px' }}
                         >
-                          <LinkIcon fontSize="small" />
+                          <Box sx={{ 
+                            width: 20, 
+                            height: 20, 
+                            borderRadius: '6px', 
+                            overflow: 'hidden',
+                            display: 'flex'
+                          }}>
+                            <Image 
+                              src="/pf/myfans.ico" 
+                              alt="Myfans" 
+                              width={20} 
+                              height={20}
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </Box>
                         </IconButton>
                       ) : '-'}
                     </TableCell>

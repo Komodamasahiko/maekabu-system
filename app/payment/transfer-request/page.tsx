@@ -134,7 +134,7 @@ export default function TransferRequestPage() {
 
   const fetchCreators = async () => {
     try {
-      const response = await fetch('/api/creators');
+      const response = await fetch('/api/creators?source=fan_pf_creator');
       const result = await response.json();
       
       if (response.ok) {
@@ -235,7 +235,7 @@ export default function TransferRequestPage() {
     setPage(0);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -375,7 +375,9 @@ export default function TransferRequestPage() {
                   <MenuItem value="">プラットフォーム全体</MenuItem>
                   {Array.from(new Set(transferRequests.map(r => r.fan_pf_creator?.platform).filter(Boolean))).map(platform => (
                     <MenuItem key={platform} value={platform}>
-                      {platform}
+                      {platform === 'Fantia' ? 'ファンティア' :
+                       platform === 'Myfans' ? 'マイファンズ' :
+                       platform}
                     </MenuItem>
                   ))}
                 </Select>
@@ -384,6 +386,180 @@ export default function TransferRequestPage() {
           </Box>
         </Paper>
 
+        {/* 合計表示 */}
+        {!loading && filteredTransferRequests.length > 0 && (
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 3, 
+              flexWrap: 'wrap',
+              justifyContent: 'space-between'
+            }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  入金額
+                </Typography>
+                <Typography variant="h6" color="primary">
+                  ¥{filteredTransferRequests.reduce((sum, r) => sum + (r.deposit_amount || 0), 0).toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  100.0%
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  クリエイター支払額
+                </Typography>
+                <Typography variant="h6" color="secondary">
+                  ¥{filteredTransferRequests.reduce((sum, r) => {
+                    const amount = r.deposit_amount || 0;
+                    const rate = r.fan_pf_creator?.creator_rate || 0;
+                    return sum + Math.floor(amount * rate);
+                  }, 0).toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {(() => {
+                    const totalDeposit = filteredTransferRequests.reduce((sum, r) => sum + (r.deposit_amount || 0), 0);
+                    const totalPayment = filteredTransferRequests.reduce((sum, r) => {
+                      const amount = r.deposit_amount || 0;
+                      const rate = r.fan_pf_creator?.creator_rate || 0;
+                      return sum + Math.floor(amount * rate);
+                    }, 0);
+                    return totalDeposit > 0 ? ((totalPayment / totalDeposit) * 100).toFixed(1) + '%' : '0.0%';
+                  })()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  代理店支払額
+                </Typography>
+                <Typography variant="h6" color="info.main">
+                  ¥{filteredTransferRequests.reduce((sum, r) => {
+                    const depositAmount = r.deposit_amount || 0;
+                    const creatorRate = r.fan_pf_creator?.creator_rate || 0;
+                    const agencyRate = r.fan_pf_creator?.agency_rate || 0;
+                    const distributionMethod = r.fan_pf_creator?.distribution_method || '';
+                    const paymentAmount = Math.floor(depositAmount * creatorRate);
+                    
+                    let agencyReward = 0;
+                    
+                    if (distributionMethod === 'CR給') {
+                      agencyReward = Math.floor(paymentAmount * agencyRate);
+                    } else if (distributionMethod === '入金額') {
+                      agencyReward = Math.floor(depositAmount * agencyRate);
+                    } else if (distributionMethod === '入金額-CR給') {
+                      agencyReward = Math.floor((depositAmount - paymentAmount) * agencyRate);
+                    }
+                    
+                    return sum + agencyReward;
+                  }, 0).toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {(() => {
+                    const totalDeposit = filteredTransferRequests.reduce((sum, r) => sum + (r.deposit_amount || 0), 0);
+                    const totalAgency = filteredTransferRequests.reduce((sum, r) => {
+                      const depositAmount = r.deposit_amount || 0;
+                      const creatorRate = r.fan_pf_creator?.creator_rate || 0;
+                      const agencyRate = r.fan_pf_creator?.agency_rate || 0;
+                      const distributionMethod = r.fan_pf_creator?.distribution_method || '';
+                      const paymentAmount = Math.floor(depositAmount * creatorRate);
+                      
+                      let agencyReward = 0;
+                      
+                      if (distributionMethod === 'CR給') {
+                        agencyReward = Math.floor(paymentAmount * agencyRate);
+                      } else if (distributionMethod === '入金額') {
+                        agencyReward = Math.floor(depositAmount * agencyRate);
+                      } else if (distributionMethod === '入金額-CR給') {
+                        agencyReward = Math.floor((depositAmount - paymentAmount) * agencyRate);
+                      }
+                      
+                      return sum + agencyReward;
+                    }, 0);
+                    return totalDeposit > 0 ? ((totalAgency / totalDeposit) * 100).toFixed(1) + '%' : '0.0%';
+                  })()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  粗利
+                </Typography>
+                <Typography variant="h6" fontWeight="bold" color="success.main">
+                  ¥{(() => {
+                    const totalDeposit = filteredTransferRequests.reduce((sum, r) => sum + (r.deposit_amount || 0), 0);
+                    const totalPayment = filteredTransferRequests.reduce((sum, r) => {
+                      const amount = r.deposit_amount || 0;
+                      const rate = r.fan_pf_creator?.creator_rate || 0;
+                      return sum + Math.floor(amount * rate);
+                    }, 0);
+                    const totalAgency = filteredTransferRequests.reduce((sum, r) => {
+                      const depositAmount = r.deposit_amount || 0;
+                      const creatorRate = r.fan_pf_creator?.creator_rate || 0;
+                      const agencyRate = r.fan_pf_creator?.agency_rate || 0;
+                      const distributionMethod = r.fan_pf_creator?.distribution_method || '';
+                      const paymentAmount = Math.floor(depositAmount * creatorRate);
+                      
+                      let agencyReward = 0;
+                      
+                      if (distributionMethod === 'CR給') {
+                        agencyReward = Math.floor(paymentAmount * agencyRate);
+                      } else if (distributionMethod === '入金額') {
+                        agencyReward = Math.floor(depositAmount * agencyRate);
+                      } else if (distributionMethod === '入金額-CR給') {
+                        agencyReward = Math.floor((depositAmount - paymentAmount) * agencyRate);
+                      }
+                      
+                      return sum + agencyReward;
+                    }, 0);
+                    
+                    const grossProfit = totalDeposit - totalPayment - totalAgency;
+                    return grossProfit.toLocaleString();
+                  })()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {(() => {
+                    const totalDeposit = filteredTransferRequests.reduce((sum, r) => sum + (r.deposit_amount || 0), 0);
+                    const totalPayment = filteredTransferRequests.reduce((sum, r) => {
+                      const amount = r.deposit_amount || 0;
+                      const rate = r.fan_pf_creator?.creator_rate || 0;
+                      return sum + Math.floor(amount * rate);
+                    }, 0);
+                    const totalAgency = filteredTransferRequests.reduce((sum, r) => {
+                      const depositAmount = r.deposit_amount || 0;
+                      const creatorRate = r.fan_pf_creator?.creator_rate || 0;
+                      const agencyRate = r.fan_pf_creator?.agency_rate || 0;
+                      const distributionMethod = r.fan_pf_creator?.distribution_method || '';
+                      const paymentAmount = Math.floor(depositAmount * creatorRate);
+                      
+                      let agencyReward = 0;
+                      
+                      if (distributionMethod === 'CR給') {
+                        agencyReward = Math.floor(paymentAmount * agencyRate);
+                      } else if (distributionMethod === '入金額') {
+                        agencyReward = Math.floor(depositAmount * agencyRate);
+                      } else if (distributionMethod === '入金額-CR給') {
+                        agencyReward = Math.floor((depositAmount - paymentAmount) * agencyRate);
+                      }
+                      
+                      return sum + agencyReward;
+                    }, 0);
+                    
+                    const grossProfit = totalDeposit - totalPayment - totalAgency;
+                    return totalDeposit > 0 ? ((grossProfit / totalDeposit) * 100).toFixed(1) + '%' : '0.0%';
+                  })()}
+                </Typography>
+              </Box>
+            </Box>
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ mt: 2, display: 'block' }}
+            >
+              ※ CR料率、AG料率に関してはデータベースの最新の情報になるため、過去のデータを見た場合実際の計算と異なる場合があります。
+            </Typography>
+          </Paper>
+        )}
+
         {/* テーブル */}
         <TableContainer component={Paper}>
           <Table>
@@ -391,13 +567,15 @@ export default function TransferRequestPage() {
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                 <TableCell>稼働年月</TableCell>
                 <TableCell>入金年月</TableCell>
-                <TableCell>クリエイター名</TableCell>
+                <TableCell sx={{ width: '180px', maxWidth: '180px' }}>クリエイター名</TableCell>
                 <TableCell>プラットフォーム</TableCell>
                 <TableCell align="center">料率(%)</TableCell>
                 <TableCell>エージェンシー</TableCell>
                 <TableCell align="center">エージェンシー率(%)</TableCell>
                 <TableCell>配信方法</TableCell>
                 <TableCell align="right">入金額</TableCell>
+                <TableCell align="right">支払額</TableCell>
+                <TableCell align="right">代理店支払額</TableCell>
                 <TableCell>備考</TableCell>
                 <TableCell align="center">ステータス</TableCell>
                 <TableCell align="center">操作</TableCell>
@@ -406,13 +584,13 @@ export default function TransferRequestPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
                     <Typography>読み込み中...</Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedTransferRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
                     <Typography>データが見つかりません</Typography>
                   </TableCell>
                 </TableRow>
@@ -433,14 +611,27 @@ export default function TransferRequestPage() {
                         {request.deposit_year}年{request.deposit_month}月
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography fontWeight="medium">
+                    <TableCell sx={{ width: '180px', maxWidth: '180px' }}>
+                      <Typography 
+                        fontWeight="medium"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          display: 'block'
+                        }}
+                        title={request.fan_pf_creator?.creator_name || '-'}
+                      >
                         {request.fan_pf_creator?.creator_name || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={request.fan_pf_creator?.platform || '-'}
+                        label={
+                          request.fan_pf_creator?.platform === 'Fantia' ? 'ファンティア' :
+                          request.fan_pf_creator?.platform === 'Myfans' ? 'マイファンズ' :
+                          request.fan_pf_creator?.platform || '-'
+                        }
                         size="small"
                         color={request.fan_pf_creator?.platform === 'Fantia' ? 'primary' : 'secondary'}
                         variant="outlined"
@@ -470,6 +661,39 @@ export default function TransferRequestPage() {
                     <TableCell align="right">
                       <Typography fontWeight="medium" color="primary">
                         ¥{request.deposit_amount?.toLocaleString() || '0'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography fontWeight="medium" color="secondary">
+                        ¥{request.fan_pf_creator?.creator_rate && request.deposit_amount
+                          ? Math.floor(request.deposit_amount * request.fan_pf_creator.creator_rate).toLocaleString()
+                          : '0'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="info.main">
+                        ¥{(() => {
+                          const depositAmount = request.deposit_amount || 0;
+                          const creatorRate = request.fan_pf_creator?.creator_rate || 0;
+                          const agencyRate = request.fan_pf_creator?.agency_rate || 0;
+                          const distributionMethod = request.fan_pf_creator?.distribution_method || '';
+                          const paymentAmount = Math.floor(depositAmount * creatorRate);
+                          
+                          let agencyReward = 0;
+                          
+                          if (distributionMethod === 'CR給') {
+                            // CR給: 支払額に％をかけたものが代理店報酬額
+                            agencyReward = Math.floor(paymentAmount * agencyRate);
+                          } else if (distributionMethod === '入金額') {
+                            // 入金額: 入金額に％をかけたものが代理店報酬額
+                            agencyReward = Math.floor(depositAmount * agencyRate);
+                          } else if (distributionMethod === '入金額-CR給') {
+                            // 入金額-CR給: 入金額から支払額を引いたものに％をかけたものが代理店報酬額
+                            agencyReward = Math.floor((depositAmount - paymentAmount) * agencyRate);
+                          }
+                          
+                          return agencyReward.toLocaleString();
+                        })()}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -542,7 +766,9 @@ export default function TransferRequestPage() {
                   type="number"
                   value={formData.deposit_year}
                   onChange={(e) => setFormData({...formData, deposit_year: parseInt(e.target.value)})}
-                  InputProps={{ inputProps: { min: 2020, max: 2030 } }}
+                  slotProps={{ 
+                    htmlInput: { min: 2020, max: 2030 } 
+                  }}
                 />
                 <FormControl fullWidth>
                   <InputLabel>入金月</InputLabel>
@@ -568,7 +794,9 @@ export default function TransferRequestPage() {
                   <MenuItem value="">全てのプラットフォーム</MenuItem>
                   {Array.from(new Set(creators.map(c => c.platform))).map(platform => (
                     <MenuItem key={platform} value={platform}>
-                      {platform}
+                      {platform === 'Fantia' ? 'ファンティア' :
+                       platform === 'Myfans' ? 'マイファンズ' :
+                       platform}
                     </MenuItem>
                   ))}
                 </Select>
@@ -579,7 +807,7 @@ export default function TransferRequestPage() {
                 options={creators.filter(creator => !selectedPlatformForForm || creator.platform === selectedPlatformForForm)}
                 getOptionLabel={(option) => option.creator_name}
                 value={creators.find(c => c.id === formData.fan_pf_creator_id) || null}
-                onChange={(event, newValue) => {
+                onChange={(_, newValue) => {
                   setFormData({...formData, fan_pf_creator_id: newValue ? newValue.id : ''});
                 }}
                 disabled={!selectedPlatformForForm}
@@ -600,9 +828,11 @@ export default function TransferRequestPage() {
                 type="number"
                 value={formData.deposit_amount}
                 onChange={(e) => setFormData({...formData, deposit_amount: e.target.value})}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">¥</InputAdornment>,
-                  inputProps: { min: 0, step: 1 }
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">¥</InputAdornment>,
+                    inputProps: { min: 0, step: 1 }
+                  }
                 }}
               />
 

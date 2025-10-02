@@ -11,7 +11,24 @@ export async function GET(request: NextRequest) {
     
     const searchParams = request.nextUrl.searchParams;
     const platform = searchParams.get('platform');
+    const source = searchParams.get('source'); // 'fan_creator' or 'fan_pf_creator'
     
+    // sourceパラメータがなければ、fan_creatorテーブルから全データを取得（/creator用）
+    if (!source || source === 'fan_creator') {
+      const { data, error } = await supabase
+        .from('fan_creator')
+        .select('*')
+        .order('real_name');
+      
+      if (error) {
+        console.error('Database error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      
+      return NextResponse.json({ data: data || [] });
+    }
+    
+    // source === 'fan_pf_creator'の場合（他のページ用）
     let query = supabase
       .from('fan_pf_creator')
       .select('id, creator_name, platform')

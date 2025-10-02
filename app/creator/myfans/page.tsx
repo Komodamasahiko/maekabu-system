@@ -92,7 +92,7 @@ export default function MyfansPage() {
 
   const filteredCreators = creators.filter(creator =>
     creator.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    creator.platform_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    creator.platform_id?.toString().includes(searchTerm) ||
     creator.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     creator.manager?.toLowerCase().includes(searchTerm.toLowerCase())
   );

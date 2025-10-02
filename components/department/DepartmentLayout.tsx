@@ -167,7 +167,7 @@ export default function DepartmentLayout({ children, departmentName, departmentC
                         </span>
                       )}
                     </button>
-                    {hasChildren && isExpanded && (
+                    {hasChildren && isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1">
                         {item.children.map((child) => {
                           const isChildActive = pathname === child.path;
@@ -265,7 +265,7 @@ export default function DepartmentLayout({ children, departmentName, departmentC
                         </span>
                       )}
                     </button>
-                    {hasChildren && isExpanded && (
+                    {hasChildren && isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1">
                         {item.children.map((child) => {
                           const isChildActive = pathname === child.path;

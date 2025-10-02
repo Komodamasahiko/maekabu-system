@@ -32,11 +32,12 @@ import {
   ListItem,
   ListItemText,
   ListItemButton,
-  Grid,
+  Autocomplete,
 } from '@mui/material';
 import {
   Search,
   NavigateNext,
+  Delete,
 } from '@mui/icons-material';
 
 interface TransferRequest {
@@ -59,6 +60,14 @@ interface TransferRequest {
     id: number;
     creator_name: string;
     platform: string;
+    creator_rate?: number;
+    agency_id?: string;
+    agency_name?: string;
+    agency_rate?: number;
+    distribution_method?: string;
+    agency?: {
+      agency_name: string;
+    };
   };
   approved_employee?: {
     id: string;
@@ -99,15 +108,15 @@ export default function TransferRequestPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('');
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransferRequest, setSelectedTransferRequest] = useState<TransferRequest | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TransferRequest | null>(null);
   const [matchingTransactions, setMatchingTransactions] = useState<BankTransaction[]>([]);
   
-  // 新規申請用state
+  // 新規入力用state
   const [newRequestDialogOpen, setNewRequestDialogOpen] = useState(false);
   const [creators, setCreators] = useState<any[]>([]);
   const [selectedPlatformForForm, setSelectedPlatformForForm] = useState<string>('');
   const [formData, setFormData] = useState({
-    work_year: new Date().getFullYear(),
-    work_month: new Date().getMonth() + 1,
     deposit_year: new Date().getFullYear(),
     deposit_month: new Date().getMonth() + 1,
     fan_pf_creator_id: '',
@@ -154,8 +163,6 @@ export default function TransferRequestPage() {
 
   const handleOpenNewRequest = () => {
     setFormData({
-      work_year: new Date().getFullYear(),
-      work_month: new Date().getMonth() + 1,
       deposit_year: new Date().getFullYear(),
       deposit_month: new Date().getMonth() + 1,
       fan_pf_creator_id: '',
@@ -174,6 +181,12 @@ export default function TransferRequestPage() {
 
   const handleSubmitNewRequest = async () => {
     try {
+      // 入金年月から2ヶ月前を稼働年月として計算
+      const depositDate = new Date(formData.deposit_year, formData.deposit_month - 1);
+      const workDate = new Date(depositDate.getFullYear(), depositDate.getMonth() - 2);
+      const work_year = workDate.getFullYear();
+      const work_month = workDate.getMonth() + 1;
+
       const response = await fetch('/api/payments', {
         method: 'POST',
         headers: {
@@ -181,9 +194,13 @@ export default function TransferRequestPage() {
         },
         body: JSON.stringify({
           type: 'transfer-request',
-          ...formData,
+          work_year,
+          work_month,
+          deposit_year: formData.deposit_year,
+          deposit_month: formData.deposit_month,
           deposit_amount: parseFloat(formData.deposit_amount),
-          fan_pf_creator_id: parseInt(formData.fan_pf_creator_id)
+          fan_pf_creator_id: parseInt(formData.fan_pf_creator_id),
+          note: formData.note
         }),
       });
 
@@ -217,6 +234,34 @@ export default function TransferRequestPage() {
       }
     } catch (error) {
       console.error('Error fetching bank transactions:', error);
+    }
+  };
+
+  const handleDeleteClick = (request: TransferRequest) => {
+    setDeleteTarget(request);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    
+    try {
+      const response = await fetch(`/api/payments/${deleteTarget.id}?type=transfer-request`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setDeleteDialogOpen(false);
+        setDeleteTarget(null);
+        fetchTransferRequests(); // データを再取得
+      } else {
+        const error = await response.json();
+        console.error('Error deleting transfer request:', error);
+        alert('削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error deleting transfer request:', error);
+      alert('削除に失敗しました');
     }
   };
 
@@ -314,7 +359,7 @@ export default function TransferRequestPage() {
             size="small"
             onClick={handleOpenNewRequest}
           >
-            新規申請
+            新規入力
           </Button>
         </Box>
 
@@ -411,6 +456,10 @@ export default function TransferRequestPage() {
                 <TableCell>入金年月</TableCell>
                 <TableCell>クリエイター名</TableCell>
                 <TableCell>プラットフォーム</TableCell>
+                <TableCell align="center">料率(%)</TableCell>
+                <TableCell>エージェンシー</TableCell>
+                <TableCell align="center">エージェンシー率(%)</TableCell>
+                <TableCell>配信方法</TableCell>
                 <TableCell align="right">入金額</TableCell>
                 <TableCell>備考</TableCell>
                 <TableCell align="center">ステータス</TableCell>
@@ -422,13 +471,13 @@ export default function TransferRequestPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
                     <Typography>読み込み中...</Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedTransferRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
                     <Typography>データが見つかりません</Typography>
                   </TableCell>
                 </TableRow>
@@ -461,6 +510,27 @@ export default function TransferRequestPage() {
                         color={request.fan_pf_creator?.platform === 'Fantia' ? 'primary' : 'secondary'}
                         variant="outlined"
                       />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2">
+                        {request.fan_pf_creator?.creator_rate ? (request.fan_pf_creator.creator_rate * 100).toFixed(0) + '%' : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {request.fan_pf_creator?.agency_name || 
+                         (request.fan_pf_creator?.agency_id ? `Agency ${request.fan_pf_creator.agency_id}` : '-')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2">
+                        {request.fan_pf_creator?.agency_rate ? (request.fan_pf_creator.agency_rate * 100).toFixed(0) + '%' : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {request.fan_pf_creator?.distribution_method || '-'}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography fontWeight="medium" color="primary">
@@ -510,14 +580,25 @@ export default function TransferRequestPage() {
                       )}
                     </TableCell>
                     <TableCell align="center">
-                      <Button 
-                        size="small" 
-                        variant="outlined"
-                        onClick={() => handleMatchTransaction(request)}
-                        disabled={!!request.bank_transaction_id}
-                      >
-                        {request.bank_transaction_id ? '照合済み' : '銀行照合'}
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Button 
+                          size="small" 
+                          variant="outlined"
+                          onClick={() => handleMatchTransaction(request)}
+                          disabled={!!request.bank_transaction_id}
+                        >
+                          {request.bank_transaction_id ? '照合済み' : '銀行照合'}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleDeleteClick(request)}
+                          startIcon={<Delete />}
+                        >
+                          削除
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))
@@ -573,125 +654,95 @@ export default function TransferRequestPage() {
           </DialogActions>
         </Dialog>
 
-        {/* 新規申請ダイアログ */}
+        {/* 新規入力ダイアログ */}
         <Dialog 
           open={newRequestDialogOpen} 
           onClose={() => setNewRequestDialogOpen(false)}
           maxWidth="md"
           fullWidth
         >
-          <DialogTitle>新規振込申請</DialogTitle>
+          <DialogTitle>新規振込入力</DialogTitle>
           <DialogContent>
-            <Box sx={{ pt: 2 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
+            <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  label="入金年"
+                  type="number"
+                  value={formData.deposit_year}
+                  onChange={(e) => setFormData({...formData, deposit_year: parseInt(e.target.value)})}
+                  InputProps={{ inputProps: { min: 2020, max: 2030 } }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>入金月</InputLabel>
+                  <Select
+                    value={formData.deposit_month}
+                    label="入金月"
+                    onChange={(e) => setFormData({...formData, deposit_month: e.target.value as number})}
+                  >
+                    {Array.from({length: 12}, (_, i) => (
+                      <MenuItem key={i+1} value={i+1}>{i+1}月</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              <FormControl fullWidth>
+                <InputLabel>プラットフォーム</InputLabel>
+                <Select
+                  value={selectedPlatformForForm}
+                  label="プラットフォーム"
+                  onChange={(e) => handlePlatformChange(e.target.value)}
+                >
+                  <MenuItem value="">全てのプラットフォーム</MenuItem>
+                  {Array.from(new Set(creators.map(c => c.platform))).map(platform => (
+                    <MenuItem key={platform} value={platform}>
+                      {platform}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Autocomplete
+                fullWidth
+                options={creators.filter(creator => !selectedPlatformForForm || creator.platform === selectedPlatformForForm)}
+                getOptionLabel={(option) => option.creator_name}
+                value={creators.find(c => c.id === formData.fan_pf_creator_id) || null}
+                onChange={(event, newValue) => {
+                  setFormData({...formData, fan_pf_creator_id: newValue ? newValue.id : ''});
+                }}
+                disabled={!selectedPlatformForForm}
+                renderInput={(params) => (
                   <TextField
-                    fullWidth
-                    label="稼働年"
-                    type="number"
-                    value={formData.work_year}
-                    onChange={(e) => setFormData({...formData, work_year: parseInt(e.target.value)})}
-                    InputProps={{ inputProps: { min: 2020, max: 2030 } }}
+                    {...params}
+                    label="クリエイター"
+                    placeholder="クリエイター名を入力して検索"
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>稼働月</InputLabel>
-                    <Select
-                      value={formData.work_month}
-                      label="稼働月"
-                      onChange={(e) => setFormData({...formData, work_month: e.target.value as number})}
-                    >
-                      {Array.from({length: 12}, (_, i) => (
-                        <MenuItem key={i+1} value={i+1}>{i+1}月</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="入金年"
-                    type="number"
-                    value={formData.deposit_year}
-                    onChange={(e) => setFormData({...formData, deposit_year: parseInt(e.target.value)})}
-                    InputProps={{ inputProps: { min: 2020, max: 2030 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>入金月</InputLabel>
-                    <Select
-                      value={formData.deposit_month}
-                      label="入金月"
-                      onChange={(e) => setFormData({...formData, deposit_month: e.target.value as number})}
-                    >
-                      {Array.from({length: 12}, (_, i) => (
-                        <MenuItem key={i+1} value={i+1}>{i+1}月</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>プラットフォーム</InputLabel>
-                    <Select
-                      value={selectedPlatformForForm}
-                      label="プラットフォーム"
-                      onChange={(e) => handlePlatformChange(e.target.value)}
-                    >
-                      <MenuItem value="">全てのプラットフォーム</MenuItem>
-                      {Array.from(new Set(creators.map(c => c.platform))).map(platform => (
-                        <MenuItem key={platform} value={platform}>
-                          {platform}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>クリエイター</InputLabel>
-                    <Select
-                      value={formData.fan_pf_creator_id}
-                      label="クリエイター"
-                      onChange={(e) => setFormData({...formData, fan_pf_creator_id: e.target.value})}
-                      disabled={!selectedPlatformForForm}
-                    >
-                      {creators
-                        .filter(creator => !selectedPlatformForForm || creator.platform === selectedPlatformForForm)
-                        .map((creator) => (
-                          <MenuItem key={creator.id} value={creator.id}>
-                            {creator.creator_name}
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="入金額"
-                    type="number"
-                    value={formData.deposit_amount}
-                    onChange={(e) => setFormData({...formData, deposit_amount: e.target.value})}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">¥</InputAdornment>,
-                      inputProps: { min: 0, step: 1 }
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="備考"
-                    multiline
-                    rows={3}
-                    value={formData.note}
-                    onChange={(e) => setFormData({...formData, note: e.target.value})}
-                  />
-                </Grid>
-              </Grid>
+                )}
+                noOptionsText="該当するクリエイターが見つかりません"
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+              />
+
+              <TextField
+                fullWidth
+                label="入金額"
+                type="number"
+                value={formData.deposit_amount}
+                onChange={(e) => setFormData({...formData, deposit_amount: e.target.value})}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">¥</InputAdornment>,
+                  inputProps: { min: 0, step: 1 }
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="備考"
+                multiline
+                rows={3}
+                value={formData.note}
+                onChange={(e) => setFormData({...formData, note: e.target.value})}
+              />
             </Box>
           </DialogContent>
           <DialogActions>
@@ -701,7 +752,46 @@ export default function TransferRequestPage() {
               variant="contained"
               disabled={!selectedPlatformForForm || !formData.fan_pf_creator_id || !formData.deposit_amount}
             >
-              申請する
+              入力する
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 削除確認ダイアログ */}
+        <Dialog 
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>振込申請の削除</DialogTitle>
+          <DialogContent>
+            <Typography>
+              以下の振込申請を削除しますか？
+            </Typography>
+            {deleteTarget && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Typography variant="body2">
+                  <strong>稼働年月:</strong> {deleteTarget.work_year}年{deleteTarget.work_month}月
+                </Typography>
+                <Typography variant="body2">
+                  <strong>クリエイター:</strong> {deleteTarget.fan_pf_creator?.creator_name || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>入金額:</strong> ¥{deleteTarget.deposit_amount?.toLocaleString() || '0'}
+                </Typography>
+                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                  ※ この操作は取り消せません
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>キャンセル</Button>
+            <Button 
+              onClick={handleDeleteConfirm}
+              color="error"
+              variant="contained"
+            >
+              削除する
             </Button>
           </DialogActions>
         </Dialog>

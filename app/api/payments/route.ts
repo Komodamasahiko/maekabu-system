@@ -22,7 +22,11 @@ export async function GET(request: NextRequest) {
           fan_pf_creator:fan_pf_creator_id (
             id,
             creator_name,
-            platform
+            platform,
+            creator_rate,
+            agency_id,
+            agency_rate,
+            distribution_method
           ),
           approved_employee:approved_by (
             id,
@@ -51,6 +55,42 @@ export async function GET(request: NextRequest) {
         { error: 'Failed to fetch payments', details: error.message },
         { status: 500 }
       );
+    }
+    
+    // transfer-requestの場合、agency_idからagency_nameを取得
+    if (type === 'transfer-request' && data) {
+      // 全てのユニークなagency_idを収集（文字列を数値に変換）
+      const agencyIds = new Set<number>();
+      data.forEach((item: any) => {
+        if (item.fan_pf_creator?.agency_id) {
+          const agencyIdNum = parseInt(item.fan_pf_creator.agency_id);
+          if (!isNaN(agencyIdNum)) {
+            agencyIds.add(agencyIdNum);
+          }
+        }
+      });
+      
+      // agency_idの配列からagenciesテーブルのデータを取得
+      if (agencyIds.size > 0) {
+        const { data: agencies, error: agencyError } = await supabase
+          .from('agencies')
+          .select('agency_id, agency_name')
+          .in('agency_id', Array.from(agencyIds));
+        
+        if (!agencyError && agencies) {
+          // agency_idをキーとしたマップを作成
+          const agencyMap = new Map(
+            agencies.map(agency => [agency.agency_id.toString(), agency.agency_name])
+          );
+          
+          // dataにagency_nameを追加
+          data.forEach((item: any) => {
+            if (item.fan_pf_creator?.agency_id) {
+              item.fan_pf_creator.agency_name = agencyMap.get(item.fan_pf_creator.agency_id) || `Agency ${item.fan_pf_creator.agency_id}`;
+            }
+          });
+        }
+      }
     }
     
     console.log('Fetched data:', data); // デバッグ用ログ

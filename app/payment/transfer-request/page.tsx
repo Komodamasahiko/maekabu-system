@@ -28,10 +28,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemButton,
   Autocomplete,
 } from '@mui/material';
 import {
@@ -76,15 +72,6 @@ interface TransferRequest {
   [key: string]: any;
 }
 
-interface BankTransaction {
-  id: string;
-  transaction_date: string;
-  amount: number;
-  description: string;
-  bank_account: string;
-  transaction_type: string;
-}
-
 export default function TransferRequestPage() {
   const [transferRequests, setTransferRequests] = useState<TransferRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,11 +93,8 @@ export default function TransferRequestPage() {
   const [selectedYear, setSelectedYear] = useState<string>(defaultDate.year);
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultDate.month);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('');
-  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
-  const [selectedTransferRequest, setSelectedTransferRequest] = useState<TransferRequest | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TransferRequest | null>(null);
-  const [matchingTransactions, setMatchingTransactions] = useState<BankTransaction[]>([]);
   
   // 新規入力用state
   const [newRequestDialogOpen, setNewRequestDialogOpen] = useState(false);
@@ -218,25 +202,6 @@ export default function TransferRequestPage() {
     }
   };
 
-  const handleMatchTransaction = async (transferRequest: TransferRequest) => {
-    setSelectedTransferRequest(transferRequest);
-    
-    try {
-      // 入金額と同じ金額のbank_transactionsを取得
-      const response = await fetch(`/api/bank-transactions?bank_account=MAIN002&transaction_type=withdrawal&amount=${transferRequest.deposit_amount}`);
-      const result = await response.json();
-      
-      if (response.ok) {
-        setMatchingTransactions(result.data || []);
-        setMatchDialogOpen(true);
-      } else {
-        console.error('Error fetching bank transactions:', result.error);
-      }
-    } catch (error) {
-      console.error('Error fetching bank transactions:', error);
-    }
-  };
-
   const handleDeleteClick = (request: TransferRequest) => {
     setDeleteTarget(request);
     setDeleteDialogOpen(true);
@@ -262,34 +227,6 @@ export default function TransferRequestPage() {
     } catch (error) {
       console.error('Error deleting transfer request:', error);
       alert('削除に失敗しました');
-    }
-  };
-
-  const handleConfirmMatch = async (transactionId: string) => {
-    if (!selectedTransferRequest) return;
-    
-    try {
-      const response = await fetch('/api/payments/match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          depositId: selectedTransferRequest.id,
-          transactionId: transactionId,
-        }),
-      });
-      
-      if (response.ok) {
-        // データを再取得して更新
-        fetchTransferRequests();
-        setMatchDialogOpen(false);
-        setSelectedTransferRequest(null);
-      } else {
-        console.error('Error matching transaction');
-      }
-    } catch (error) {
-      console.error('Error matching transaction:', error);
     }
   };
 
@@ -463,21 +400,19 @@ export default function TransferRequestPage() {
                 <TableCell align="right">入金額</TableCell>
                 <TableCell>備考</TableCell>
                 <TableCell align="center">ステータス</TableCell>
-                <TableCell>承認者</TableCell>
-                <TableCell align="center">銀行照合</TableCell>
                 <TableCell align="center">操作</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={12} align="center" sx={{ py: 5 }}>
                     <Typography>読み込み中...</Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedTransferRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={12} align="center" sx={{ py: 5 }}>
                     <Typography>データが見つかりません</Typography>
                   </TableCell>
                 </TableRow>
@@ -545,6 +480,7 @@ export default function TransferRequestPage() {
                     <TableCell align="center">
                       <Chip 
                         label={
+                          request.bank_transaction_id ? '入金済' :
                           request.status === 'pending' ? '申請中' :
                           request.status === 'approved' ? '承認済み' :
                           request.status === 'rejected' ? '却下' :
@@ -552,6 +488,7 @@ export default function TransferRequestPage() {
                         }
                         size="small"
                         color={
+                          request.bank_transaction_id ? 'success' :
                           request.status === 'pending' ? 'warning' :
                           request.status === 'approved' ? 'info' :
                           request.status === 'rejected' ? 'error' :
@@ -559,46 +496,16 @@ export default function TransferRequestPage() {
                         }
                       />
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {request.approved_employee?.display_name || '-'}
-                      </Typography>
-                    </TableCell>
                     <TableCell align="center">
-                      {request.bank_transaction_id ? (
-                        <Chip 
-                          label="照合済み" 
-                          color="success" 
-                          size="small" 
-                        />
-                      ) : (
-                        <Chip 
-                          label="未照合" 
-                          color="warning" 
-                          size="small" 
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                        <Button 
-                          size="small" 
-                          variant="outlined"
-                          onClick={() => handleMatchTransaction(request)}
-                          disabled={!!request.bank_transaction_id}
-                        >
-                          {request.bank_transaction_id ? '照合済み' : '銀行照合'}
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => handleDeleteClick(request)}
-                          startIcon={<Delete />}
-                        >
-                          削除
-                        </Button>
-                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => handleDeleteClick(request)}
+                        startIcon={<Delete />}
+                      >
+                        削除
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -617,42 +524,6 @@ export default function TransferRequestPage() {
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} / 全${count}件`}
           />
         </TableContainer>
-
-        {/* 銀行取引照合ダイアログ */}
-        <Dialog 
-          open={matchDialogOpen} 
-          onClose={() => setMatchDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            銀行取引との照合 - {selectedTransferRequest?.work_year}年{selectedTransferRequest?.work_month}月 {selectedTransferRequest?.fan_pf_creator?.platform}
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              入金額: ¥{selectedTransferRequest?.deposit_amount?.toLocaleString()}
-            </Typography>
-            {matchingTransactions.length === 0 ? (
-              <Typography>該当する銀行取引が見つかりません。</Typography>
-            ) : (
-              <List>
-                {matchingTransactions.map((transaction) => (
-                  <ListItem key={transaction.id} disablePadding>
-                    <ListItemButton onClick={() => handleConfirmMatch(transaction.id)}>
-                      <ListItemText
-                        primary={`${new Date(transaction.transaction_date).toLocaleDateString('ja-JP')} - ¥${transaction.amount.toLocaleString()}`}
-                        secondary={`${transaction.description} (${transaction.bank_account})`}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMatchDialogOpen(false)}>キャンセル</Button>
-          </DialogActions>
-        </Dialog>
 
         {/* 新規入力ダイアログ */}
         <Dialog 

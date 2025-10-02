@@ -32,8 +32,8 @@ const menuItems: MenuItem[] = [
     icon: <UsersIcon className="w-5 h-5" />, 
     path: '/creator',
     children: [
-      { text: 'Fantia', icon: <UsersIcon className="w-4 h-4" />, path: '/creator/fantia' },
-      { text: 'Myfans', icon: <UsersIcon className="w-4 h-4" />, path: '/creator/myfans' },
+      { text: 'ファンティア', icon: <UsersIcon className="w-4 h-4" />, path: '/creator/fantia' },
+      { text: 'マイファンズ', icon: <UsersIcon className="w-4 h-4" />, path: '/creator/myfans' },
     ]
   },
   { 

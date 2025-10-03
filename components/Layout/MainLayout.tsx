@@ -15,6 +15,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   BanknotesIcon,
+  DocumentTextIcon,
+  DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
 
 // メニューアイテムの定義
@@ -46,6 +48,8 @@ const menuItems: MenuItem[] = [
       { text: '振込申請', icon: <BanknotesIcon className="w-4 h-4" />, path: '/payment/transfer-request' },
     ]
   },
+  { text: '契約書管理', icon: <DocumentTextIcon className="w-5 h-5" />, path: '/contracts' },
+  { text: '請求書管理', icon: <DocumentDuplicateIcon className="w-5 h-5" />, path: '/invoices' },
   { text: 'マイページ', icon: <UserCircleIcon className="w-5 h-5" />, path: '/profile' },
 ];
 
